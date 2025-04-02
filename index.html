@@ -1,0 +1,190 @@
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Lucknam Park Image Editor</title> <!-- Include Bootstrap CSS --> <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"> <style> .canvas-container { position: relative; max-width: 100%; margin: auto; text-align: center; /* Centers the canvas element when it's smaller than the container */ }
+    canvas {
+    max-width: 100%;
+    max-height: 80vh; /* Sets the maximum height to 80% of the viewport height */
+    border: 1px solid #ddd;
+}
+#imageLoader {
+    display: block;
+    margin-bottom: 10px;
+}</style> </head> <body class="bg-light"> <div class="container" style="max-width: 80vh;"> <div class="row"> <div class="col-12"> <h2 class="mb-4 mt-4 text-center">Lucknam Park Image Editor</h2> <div class="custom-file mb-3"> <input type="file" class="custom-file-input" id="imageLoader" name="imageLoader"/> <label class="custom-file-label" for="imageLoader">Choose file</label> </div> </div> </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="canvas-container mb-3">
+                <canvas id="imageCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sliders -->
+    <div class="row">
+        <div class="col-12">
+            <label for="xRange">X Position:</label>
+            <input type="range" class="custom-range" id="xRange" min="-500" max="500" value="0">
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <label for="yRange">Y Position:</label>
+            <input type="range" class="custom-range" id="yRange" min="-500" max="500" value="0">
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <label for="zoomRange">Zoom:</label>
+            <input type="range" class="custom-range" id="zoomRange" min="50" max="150" value="100">
+        </div>
+    </div>
+
+    <!-- Radio buttons for overlay selection -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="overlay" id="lucknamPark" value="lucknamPark" checked>
+                <label class="form-check-label" for="lucknamPark">
+                    Lucknam Park
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="overlay" id="walledGarden" value="walledGarden">
+                <label class="form-check-label" for="walledGarden">
+                    Walled Garden
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="overlay" id="blank" value="blank">
+                <label class="form-check-label" for="blank">
+                    Blank
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <button class="btn btn-primary mt-3 mb-4" id="download">Download Image</button>
+        </div>
+    </div>
+</div>    
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script> 
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script> 
+<script>
+    var imageLoader = document.getElementById('imageLoader');
+    imageLoader.addEventListener('change', handleImage, false);
+
+    var canvas = document.getElementById('imageCanvas');
+    canvas.width = 1240;
+    canvas.height = 930;
+    var ctx = canvas.getContext('2d');
+    
+    var overlayImgs = {
+        lucknamPark: new Image(),
+        walledGarden: new Image(),
+        blank: new Image()
+    };
+    overlayImgs.lucknamPark.src = 'https://files.jarrang.com/Lucknam_Park/image_tool/images/overlay.png';
+    overlayImgs.walledGarden.src = 'https://files.jarrang.com/Lucknam_Park/image_tool/images/walled-garden-overlay.png';
+    overlayImgs.blank.src = 'https://files.jarrang.com/Lucknam_Park/image_tool/images/overlay-blank.png';
+    
+    var selectedOverlay = 'lucknamPark';
+    
+    var img = new Image();
+    var xPosition = 0;
+    var yPosition = 0;
+    var zoomLevel = 1;
+
+    // Slider event listeners
+    document.getElementById('xRange').addEventListener('input', function(e) {
+        xPosition = parseInt(e.target.value, 10);
+        drawImage();
+    });
+
+    document.getElementById('yRange').addEventListener('input', function(e) {
+        yPosition = parseInt(e.target.value, 10);
+        drawImage();
+    });
+
+    document.getElementById('zoomRange').addEventListener('input', function(e) {
+        var zoomPercent = parseInt(e.target.value, 10) / 100;
+        zoomLevel = initialZoomLevel * zoomPercent;
+        drawImage();
+    });
+    
+    // Radio button event listener
+    document.querySelectorAll('input[name="overlay"]').forEach(function(radio) {
+        radio.addEventListener('change', function(e) {
+            selectedOverlay = e.target.value;
+            drawImage();
+        });
+    });
+
+    function drawImage() {
+        // Clear the canvas for redrawing
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Calculate the new dimensions based on relative zoom
+        var newWidth = img.width * zoomLevel;
+        var newHeight = img.height * zoomLevel;
+
+        // Calculate position to center the image on canvas
+        var x = (canvas.width - newWidth) / 2 + xPosition;
+        var y = (canvas.height - newHeight) / 2 + yPosition;
+
+        // Draw the uploaded image with the new dimensions and position
+        ctx.drawImage(img, x, y, newWidth, newHeight);
+
+        // Draw the selected overlay
+        ctx.drawImage(overlayImgs[selectedOverlay], 0, 0, canvas.width, canvas.height);
+    }
+
+    var initialZoomLevel;
+
+    function handleImage(e) {
+        var reader = new FileReader();
+        reader.onload = function(event) {
+            img.onload = function() {
+                // Set canvas dimensions to match the overlay size
+                canvas.width = 1240;
+                canvas.height = 930;
+                
+                // Calculate the aspect ratios of the image and canvas
+                var imageAspectRatio = img.width / img.height;
+                var canvasAspectRatio = canvas.width / canvas.height;
+                
+                // Calculate the initial zoom level based on aspect ratios
+                if (imageAspectRatio > canvasAspectRatio) {
+                    initialZoomLevel = canvas.height / img.height;
+                } else {
+                    initialZoomLevel = canvas.width / img.width;
+                }
+                zoomLevel = initialZoomLevel;
+                
+                // Reset sliders
+                document.getElementById('xRange').value = 0;
+                document.getElementById('yRange').value = 0;
+                document.getElementById('zoomRange').value = 100;
+                xPosition = 0;
+                yPosition = 0;
+                
+                drawImage(); // Draw the image for the first time
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(e.target.files[0]);
+    }
+
+    // Function to download the canvas as a PNG file
+    document.getElementById('download').addEventListener('click', function() {
+    var image = canvas.toDataURL("image/jpeg", 1.0).replace("image/jpeg", "image/octet-stream");
+    var link = document.createElement('a');
+    link.download = 'edited_image.jpg';
+    link.href = image;
+    link.click();
+    });
+
+    // Improve file input interaction
+    $('.custom-file-input').on('change',function(){
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').addClass("selected").html(fileName);
+    })
+</script> </body> </html>
